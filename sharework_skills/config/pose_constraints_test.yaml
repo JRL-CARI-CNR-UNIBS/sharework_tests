@@ -1,0 +1,39 @@
+tasks:
+  - name: "task1"
+    goal_configuration: [1.570796327, -2.443460953, 2.443460953, -1.570796327, 1.570796327, 0.0]
+
+    # geometric constraints definition
+    geometric_constraints:
+      # Define a plane constraint at y=0.5 with normal along y-axis
+      - name: "geometric_constraint_1"
+        type: "plane"
+        frame: "world"
+        origin: [ 0.5,0.0,0.0 ]       # point on the plane
+        normal: [ -1,0,0 ]             # normal vector of the plane     # Define an orientation constraint around z-axis with max angle 0.3 radians
+      -   name: "geometric_constraint_2"
+          type: "orientation"
+          frame: "world"
+          max_angle: [-1.0,-1.0,0.3]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
+  - name: "task2"
+    goal_configuration: [1.811413445, -2.06692871738724, 2.3611616185427997, -1.570796327, 1.570796327, 0.0]
+
+    # geometric constraints definition
+    geometric_constraints:
+      # Define a plane constraint at y=0.5 with normal along y-axis
+      -   name: "geometric_constraint_1"
+          type: "plane"
+          frame: "world"
+          origin: [0.5,0.0,0.0]       # point on the plane
+          normal: [-1,0,0]             # normal vector of the plane
+      # Define an orientation constraint around z-axis with max angle 0.3 radians
+      -   name: "geometric_constraint_2"
+          type: "orientation"
+          frame: "world"
+          max_angle: [-1.0,-1.0,0.3]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
+#      # Define a line constraint along x-axis at y=0.0, z=0.5
+#      -   name: "geometric_constraint_3"
+#          type: "line"
+#          frame: "world"
+#          max_distance: 0.6          # max distance from the line
+#          origin: [0.25,0.0,1.3]     # point on the line
+#          direction: [0.0,1.0,0.0]   # line direction vector
