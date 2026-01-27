@@ -20,6 +20,7 @@ from moveit_msgs.action import ExecuteTrajectory
 from pose_constraints_msgs.msg import GeometricConstraintArray, GeometricConstraint
 from moveit_msgs.msg import (
     MotionPlanRequest,
+    MotionPlanResponse,
     Constraints,
     JointConstraint,
     MoveItErrorCodes,
@@ -64,8 +65,14 @@ class PoseConstraintsPipelineNode(Node):
         self.declare_parameter("joint_tolerance", 0.001)
         self.declare_parameter("num_planning_attempts", 1)
         self.declare_parameter("allowed_planning_time", 5.0)
+
+        # Scaling factors used by BOTH planning request and time parametrization action goal
         self.declare_parameter("max_velocity_scaling_factor", 1.0)
         self.declare_parameter("max_acceleration_scaling_factor", 1.0)
+
+        # Cartesian speed limiting parameters for the NEW ApplyTimeParametrization action
+        self.declare_parameter("cartesian_speed_limited_link", "")
+        self.declare_parameter("max_cartesian_speed", 0.0)  # m/s ; <=0 => ignored
 
         self.declare_parameter("verbose", False)
         self.declare_parameter("stop_on_error", True)
@@ -89,8 +96,12 @@ class PoseConstraintsPipelineNode(Node):
         self.joint_tolerance = float(self.get_parameter("joint_tolerance").value)
         self.num_planning_attempts = int(self.get_parameter("num_planning_attempts").value)
         self.allowed_planning_time = float(self.get_parameter("allowed_planning_time").value)
+
         self.max_vel = float(self.get_parameter("max_velocity_scaling_factor").value)
         self.max_acc = float(self.get_parameter("max_acceleration_scaling_factor").value)
+
+        self.cartesian_speed_limited_link = str(self.get_parameter("cartesian_speed_limited_link").value)
+        self.max_cartesian_speed = float(self.get_parameter("max_cartesian_speed").value)
 
         self.verbose = bool(self.get_parameter("verbose").value)
         self.stop_on_error = bool(self.get_parameter("stop_on_error").value)
@@ -130,7 +141,6 @@ class PoseConstraintsPipelineNode(Node):
         self.exec_client = ActionClient(self, ExecuteTrajectory, self.execute_action_name)
 
     def _on_joint_state(self, msg: JointState) -> None:
-        # Salva ultimo joint state e tempo di ricezione
         self._latest_js = msg
         self._latest_js_rx_time = self.get_clock().now()
 
@@ -192,17 +202,14 @@ class PoseConstraintsPipelineNode(Node):
             )
 
         start = RobotState()
-        # riempi joint_state con ordine coerente
         start.joint_state.name = list(self.joint_names)
         start.joint_state.position = ordered_pos
 
-        # timestamp: opzionale, ma utile
         try:
             start.joint_state.header.stamp = js.header.stamp
         except Exception:
             pass
 
-        # is_diff=False perché stiamo fornendo uno start completo
         try:
             start.is_diff = False
         except Exception:
@@ -297,13 +304,13 @@ class PoseConstraintsPipelineNode(Node):
         req.group_name = self.group_name
         req.num_planning_attempts = self.num_planning_attempts
         req.allowed_planning_time = self.allowed_planning_time
+
+        # For planning (MoveIt) this scales inside the pipeline too
         req.max_velocity_scaling_factor = self.max_vel
         req.max_acceleration_scaling_factor = self.max_acc
 
-        # start_state completo dai joint_states
         req.start_state = start_state
 
-        # Goal constraints: joint-space
         c = Constraints()
         c.name = "joint_goal"
         for jn, pos in zip(self.joint_names, goal_configuration):
@@ -331,15 +338,12 @@ class PoseConstraintsPipelineNode(Node):
         return result_future.result().result
 
     def run(self) -> None:
-        # 1) aspetta joint_states
         self.get_logger().info(f"Attendo JointState su: {self.joint_states_topic}")
         self._wait_for_joint_state()
         self.get_logger().info("JointState ricevuto. Avvio pipeline.")
 
-        # 2) aspetta action servers
         self._wait_servers()
 
-        # 3) carica tasks
         tasks = self._load_tasks()
         self.get_logger().info(f"Caricati {len(tasks)} task da: {self.tasks_yaml_path}")
 
@@ -356,7 +360,7 @@ class PoseConstraintsPipelineNode(Node):
                 if not isinstance(geom, list):
                     raise RuntimeError("geometric_constraints deve essere una lista.")
 
-                # start_state “fresh” per ogni task (se il robot si muove tra task)
+                # start_state “fresh” per ogni task
                 start_state = self._build_start_state_from_joint_states()
 
                 # ---- Build request + constraints
@@ -370,18 +374,22 @@ class PoseConstraintsPipelineNode(Node):
                 plan_goal.verbose = self.verbose
 
                 plan_res = self._send_goal_and_wait(self.plan_client, plan_goal, self.plan_action_name)
-                mpr_out = plan_res.motion_plan_response
+                plan_out: MotionPlanResponse = plan_res.motion_plan_response
 
-                if not _is_success(mpr_out.error_code):
-                    raise RuntimeError(f"Planning fallito (error_code={int(mpr_out.error_code.val)})")
+                if not _is_success(plan_out.error_code):
+                    raise RuntimeError(f"Planning fallito (error_code={int(plan_out.error_code.val)})")
 
-                # ---- 2) Apply time parametrization
-                # La tua action accetta SOLO MotionPlanRequest: reinviamo la request
-                # ma con start_state coerente (idealmente: quello usato nel planning).
+                # ---- 2) Apply time parametrization (NEW action API)
                 tp_goal = ApplyTimeParametrization.Goal()
-                tp_goal.motion_plan_request = mpr
+                tp_goal.unparametrized_motion_plan_response = plan_out
+                tp_goal.max_velocity_scaling_factor = float(self.max_vel)
+                tp_goal.max_acceleration_scaling_factor = float(self.max_acc)
+
+                tp_goal.cartesian_speed_limited_link = str(self.cartesian_speed_limited_link)
+                tp_goal.max_cartesian_speed = float(self.max_cartesian_speed)
+
                 tp_res = self._send_goal_and_wait(self.tp_client, tp_goal, self.time_param_action_name)
-                tp_out = tp_res.motion_plan_response
+                tp_out: MotionPlanResponse = tp_res.motion_plan_response
 
                 if not _is_success(tp_out.error_code):
                     raise RuntimeError(f"Time parametrization fallita (error_code={int(tp_out.error_code.val)})")
@@ -425,3 +433,4 @@ def main(argv=None) -> None:
 
 if __name__ == "__main__":
     main(sys.argv)
+
