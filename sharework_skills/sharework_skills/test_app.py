@@ -64,15 +64,15 @@ class PoseConstraintsPipelineNode(Node):
 
         self.declare_parameter("joint_tolerance", 0.001)
         self.declare_parameter("num_planning_attempts", 1)
-        self.declare_parameter("allowed_planning_time", 5.0)
+        self.declare_parameter("allowed_planning_time", 15.0)
 
         # Scaling factors used by BOTH planning request and time parametrization action goal
-        self.declare_parameter("max_velocity_scaling_factor", 1.0)
-        self.declare_parameter("max_acceleration_scaling_factor", 1.0)
+        self.declare_parameter("max_velocity_scaling_factor", 0.1)
+        self.declare_parameter("max_acceleration_scaling_factor", 0.1)
 
         # Cartesian speed limiting parameters for the NEW ApplyTimeParametrization action
         self.declare_parameter("cartesian_speed_limited_link", "")
-        self.declare_parameter("max_cartesian_speed", 0.0)  # m/s ; <=0 => ignored
+        self.declare_parameter("max_cartesian_speed", 0.25)  # m/s ; <=0 => ignored
 
         self.declare_parameter("verbose", False)
         self.declare_parameter("stop_on_error", True)
@@ -85,7 +85,9 @@ class PoseConstraintsPipelineNode(Node):
 
         # ---- Read params
         self.tasks_yaml_path = str(self.get_parameter("tasks_yaml_path").value)
+
         self.group_name = str(self.get_parameter("group_name").value)
+        print("group_name =", self.group_name)
 
         self.joint_names = [s for s in list(self.get_parameter("joint_names").value) if str(s).strip()]
 
@@ -96,7 +98,7 @@ class PoseConstraintsPipelineNode(Node):
         self.joint_tolerance = float(self.get_parameter("joint_tolerance").value)
         self.num_planning_attempts = int(self.get_parameter("num_planning_attempts").value)
         self.allowed_planning_time = float(self.get_parameter("allowed_planning_time").value)
-
+        
         self.max_vel = float(self.get_parameter("max_velocity_scaling_factor").value)
         self.max_acc = float(self.get_parameter("max_acceleration_scaling_factor").value)
 

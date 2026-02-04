@@ -1,0 +1,11 @@
+*~
+*.kdev4
+kdev4/
+*.txt.user*
+*.orig*
+*.autosave*
+*.idea
+*.txt
+.vscode/
+.qtcreator/
+.idea/

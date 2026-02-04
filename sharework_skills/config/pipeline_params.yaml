@@ -1,6 +1,5 @@
 pose_constraints_pipeline:
   ros__parameters:
-    tasks_yaml_path: /home/kalman/projects/ros2_ws/src/cells/sharework_skills/sharework_skills/config/pose_constraints_test.yaml
     group_name: ur_robot
     joint_names:
     - ur10e_shoulder_pan_joint
@@ -17,8 +16,8 @@ pose_constraints_pipeline:
     allowed_planning_time: 5.0
     num_planning_attempts: 3
     joint_tolerance: 0.001
-    max_velocity_scaling_factor: 1.0
-    max_acceleration_scaling_factor: 1.0
+    max_velocity_scaling_factor: 0.1
+    max_acceleration_scaling_factor: 0.1
 
     plan_action_name: /plan_with_constraints
     time_param_action_name: /apply_time_parametrization
