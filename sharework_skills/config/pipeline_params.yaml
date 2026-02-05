@@ -13,7 +13,7 @@ pose_constraints_pipeline:
     max_joint_state_age_sec: 1.0
     joint_states_topic: /joint_states
 
-    allowed_planning_time: 5.0
+    allowed_planning_time: 60.0
     num_planning_attempts: 3
     joint_tolerance: 0.001
     max_velocity_scaling_factor: 0.1

@@ -61,7 +61,7 @@ tasks:
       -   name: "t2_geometric_constraint_2"
           type: "orientation"
           frame: "ur10e_tool0"
-          max_angle: [-1.0,-1.0,0.3]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
+          max_angle: [-1.0,-1.0,10.3]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
       # Define a line constraint along x-axis at y=0.0, z=0.5
       -   name: "t3_geometric_constraint_2"
           type: "line"
