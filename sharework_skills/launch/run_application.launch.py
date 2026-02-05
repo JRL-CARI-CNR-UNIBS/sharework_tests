@@ -10,14 +10,16 @@ import os
 def _make_node(context, *args, **kwargs):
     config_pkg = LaunchConfiguration("config_pkg").perform(context)
     config_file = LaunchConfiguration("config_file").perform(context)
+    tasks_file = LaunchConfiguration("tasks_file").perform(context)
 
     pkg_share = get_package_share_directory(config_pkg)
     config_path = os.path.join(pkg_share, config_file)
+    tasks_yaml_path = os.path.join(pkg_share, tasks_file)
 
     if not os.path.isfile(config_path):
         raise RuntimeError(
             f"Config file does not exist: '{config_path}'. "
-            f"(config_pkg='{config_pkg}', config_file='{config_file}')"
+            f"(config_pkg='{config_pkg}', config_file='{config_path}')"
         )
 
     return [
@@ -26,7 +28,8 @@ def _make_node(context, *args, **kwargs):
             executable="test_app",
             output="screen",
             parameters=[
-                config_path,  # <-- load as ROS params file
+                {"tasks_yaml_path": tasks_yaml_path},
+                config_path
             ],
         )
     ]
@@ -44,6 +47,11 @@ def generate_launch_description():
                 "config_file",
                 default_value="config/pipeline_params.yaml",
                 description="Path to ROS params YAML relative to config_pkg share/",
+            ),
+            DeclareLaunchArgument(
+                "tasks_file",
+                default_value="config/pose_constraints_test.yaml",
+                description="Path to tasks description YAML relative to config_pkg share/",
             ),
             OpaqueFunction(function=_make_node),
         ]

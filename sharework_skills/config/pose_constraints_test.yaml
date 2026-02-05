@@ -8,20 +8,20 @@ tasks:
       -   name: "geometric_constraint_1"
           type: "plane"
           frame: "world"
-          origin: [ 0.55,0.0,0.0 ]       # point on the plane
+          origin: [ 0.5,0.0,0.0 ]       # point on the plane
           normal: [ -1,0,0 ]             # normal vector of the plane     
       # Define an orientation constraint around z-axis with max angle 0.3 radians
       -   name: "geometric_constraint_2"
           type: "orientation"
           frame: "world"
-          max_angle: [-1.0,-1.0,10.3]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
-      # Define a plane constraint at y=0.5 with normal along y-axis
+          max_angle: [-1.0,-1.0,0.3]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
+      # Define a plane constraint at z=1.1 with normal along z-axis
       -   name: "geometric_constraint_3"
           type: "plane"
           frame: "world"
-          origin: [ 0.0,1.2,0.0 ]       # point on the plane
-          normal: [ 0,0,1 ]             # normal vector of the plane     
-
+          origin: [ 0.0,0.0,1.1 ]       # point on the plane
+          normal: [ 0,0,1 ]             # normal vector of the plane
+      
   - name: "task2"
     goal_configuration: [2.35619, -1.29154, 1.88, -2.19911, 1.64061, 0.0]
 
@@ -31,7 +31,31 @@ tasks:
       -   name: "t2_geometric_constraint_1"
           type: "plane"
           frame: "world"
-          origin: [0.55,0.0,0.0]       # point on the plane
+          origin: [0.5,0.0,0.0]       # point on the plane
+          normal: [-1,0,0]             # normal vector of the plane
+      # Define a line constraint along x-axis at y=0.0, z=0.5
+      -   name: "t2_geometric_constraint_2"
+          type: "line"
+          frame: "world"
+          max_distance: 0.40          # max distance from the line
+          origin: [0.25,0.0,1.3]     # point on the line
+          direction: [0.0,1.0,0.0]   # line direction vector
+      # Define a plane constraint at z=1.1 with normal along z-axis
+      -   name: "t2_geometric_constraint_3"
+          type: "plane"
+          frame: "world"
+          origin: [ 0.0,0.0,1.1 ]       # point on the plane
+          normal: [ 0,0,1 ]             # normal vector of the plane
+  - name: "task3"
+    goal_configuration: [0.87266, -1.27409, 2.25147, -2.54818, 1.57080, 0.69813]
+
+    # geometric constraints definition
+    geometric_constraints:
+      # Define a plane constraint at y=0.5 with normal along y-axis
+      -   name: "t2_geometric_constraint_1"
+          type: "plane"
+          frame: "world"
+          origin: [0.5,0.0,0.0]       # point on the plane
           normal: [-1,0,0]             # normal vector of the plane
       # Define an orientation constraint around z-axis with max angle 0.3 radians
       -   name: "t2_geometric_constraint_2"
@@ -39,78 +63,80 @@ tasks:
           frame: "ur10e_tool0"
           max_angle: [-1.0,-1.0,0.3]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
       # Define a line constraint along x-axis at y=0.0, z=0.5
-      -   name: "t2_geometric_constraint_3"
-          type: "line"
-          frame: "world"
-          max_distance: 0.40          # max distance from the line
-          origin: [0.25,0.0,1.3]     # point on the line
-          direction: [0.0,1.0,0.0]   # line direction vector
-      # Define a plane constraint at y=0.5 with normal along y-axis
-      -   name: "geometric_constraint_3"
-          type: "plane"
-          frame: "world"
-          origin: [ 0.0,1.2,0.0 ]       # point on the plane
-          normal: [ 0,0,1 ]             # normal vector of the plane   
-
-  - name: "task3"
-    goal_configuration: [0.55, -1.01, 1.80, -2.29, 1.5, 1.81514]
-
-    # geometric constraints definition
-    geometric_constraints:
-      # Define a plane constraint at y=0.5 with normal along y-axis
-      -   name: "t3_geometric_constraint_1"
-          type: "plane"
-          frame: "world"
-          origin: [0.55,0.0,0.0]       # point on the plane
-          normal: [-1,0,0]             # normal vector of the plane
-      # Define an orientation constraint around z-axis with max angle 0.3 radians
       -   name: "t3_geometric_constraint_2"
-          type: "orientation"
-          frame: "ur10e_tool0"
-          max_angle: [-1.0,-1.0,0.3]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
-      # Define a line constraint along x-axis at y=0.0, z=0.5
-      -   name: "t3_geometric_constraint_3"
           type: "line"
           frame: "world"
-          max_distance: 0.40          # max distance from the line
+          max_distance: 0.80          # max distance from the line
           origin: [0.25,0.0,1.3]     # point on the line
           direction: [0.0,1.0,0.0]   # line direction vector
-      # Define a plane constraint at y=0.5 with normal along y-axis
-      -   name: "geometric_constraint_3"
+      # Define a plane constraint at z=1.1 with normal along z-axis
+      -   name: "t4_geometric_constraint_3"
           type: "plane"
           frame: "world"
-          origin: [ 0.0,1.2,0.0 ]       # point on the plane
-          normal: [ 0,0,1 ]             # normal vector of the plane     
+          origin: [ 0.0,0.0,1.1 ]       # point on the plane
+          normal: [ 0,0,1 ]             # normal vector of the plane
+  # Descending task
   - name: "task4"
-    goal_configuration: [0.57, -1.20, 1.50, -1.85, 1.52, 1.7814]
+    goal_configuration: [0.87266, -1.64061, 1.95477, -1.88496, 1.57080, 0.69813]
 
     # geometric constraints definition
     geometric_constraints:
       # Define a plane constraint at y=0.5 with normal along y-axis
-      -   name: "t4_geometric_constraint_1"
+      -   name: "t2_geometric_constraint_1"
           type: "plane"
           frame: "world"
-          origin: [0.55,0.0,0.0]       # point on the plane
+          origin: [0.5,0.0,0.0]       # point on the plane
           normal: [-1,0,0]             # normal vector of the plane
       # Define an orientation constraint around z-axis with max angle 0.3 radians
-      -   name: "t4_geometric_constraint_2"
+      -   name: "t2_geometric_constraint_2"
           type: "orientation"
           frame: "ur10e_tool0"
           max_angle: [-1.0,-1.0,0.3]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
-      # Define a line constraint along x-axis at y=0.0, z=0.5
-      -   name: "t4_geometric_constraint_3"
+      # Define a line constraint along z-axis at x=0.3, y=0.0
+      -   name: "t3_geometric_constraint_2"
           type: "line"
           frame: "world"
           max_distance: 0.10          # max distance from the line
-          origin: [0.35,0.67,0.0]     # point on the line
+          origin: [0.30,0.30,0.0]     # point on the line
           direction: [0.0,0.0,1.0]   # line direction vector
-      # Define a plane constraint at y=0.5 with normal along y-axis
-      -   name: "geometric_constraint_3"
+      # Define a plane constraint at z=1.1 with normal along z-axis
+      -   name: "t4_geometric_constraint_3"
           type: "plane"
           frame: "world"
-          origin: [ 0.0,1.2,0.0 ]       # point on the plane
-          normal: [ 0,0,1 ]             # normal vector of the plane     
+          origin: [ 0.0,0.0,1.1 ]       # point on the plane
+          normal: [ 0,0,1 ]             # normal vector of the plane
+  # Ascending task
   - name: "task5"
+    goal_configuration: [0.87266, -1.27409, 2.25147, -2.54818, 1.57080, 0.69813]
+
+    # geometric constraints definition
+    geometric_constraints:
+      # Define a plane constraint at y=0.5 with normal along y-axis
+      -   name: "t2_geometric_constraint_1"
+          type: "plane"
+          frame: "world"
+          origin: [0.5,0.0,0.0]       # point on the plane
+          normal: [-1,0,0]             # normal vector of the plane
+      # Define an orientation constraint around z-axis with max angle 0.3 radians
+      -   name: "t2_geometric_constraint_2"
+          type: "orientation"
+          frame: "ur10e_tool0"
+          max_angle: [-1.0,-1.0,0.3]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
+     # Define a line constraint along z-axis at x=0.3, y=0.0
+      -   name: "t3_geometric_constraint_2"
+          type: "line"
+          frame: "world"
+          max_distance: 0.10          # max distance from the line
+          origin: [0.30,0.30,0.0]     # point on the line
+          direction: [0.0,0.0,1.0]   # line direction vector
+      # Define a plane constraint at z=1.1 with normal along z-axis
+      -   name: "t4_geometric_constraint_3"
+          type: "plane"
+          frame: "world"
+          origin: [ 0.0,0.0,1.1 ]       # point on the plane
+          normal: [ 0,0,1 ]             # normal vector of the plane
+  #Homing task
+  - name: "task6"
     goal_configuration: [1.570796327, -2.443460953, 2.443460953, -1.570796327, 1.570796327, 0.0]
 
     # geometric constraints definition
@@ -119,16 +145,17 @@ tasks:
       -   name: "geometric_constraint_1"
           type: "plane"
           frame: "world"
-          origin: [ 0.65,0.0,0.0 ]       # point on the plane
+          origin: [ 0.5,0.0,0.0 ]       # point on the plane
           normal: [ -1,0,0 ]             # normal vector of the plane     
       # Define an orientation constraint around z-axis with max angle 0.3 radians
       -   name: "geometric_constraint_2"
           type: "orientation"
           frame: "world"
-          max_angle: [-1.0,-1.0,10.3]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
-      # Define a plane constraint at y=0.5 with normal along y-axis
+          max_angle: [-1.0,-1.0,0.3]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
+      # Define a plane constraint at z=1.1 with normal along z-axis
       -   name: "geometric_constraint_3"
           type: "plane"
           frame: "world"
-          origin: [ 0.0,1.2,0.0 ]       # point on the plane
-          normal: [ 0,0,1 ]             # normal vector of the plane     
+          origin: [ 0.0,0.0,1.1 ]       # point on the plane
+          normal: [ 0,0,1 ]             # normal vector of the plane
+      
