@@ -1,6 +1,6 @@
 pose_constraints_pipeline:
   ros__parameters:
-    tasks_yaml_path: /home/riccardo/ros2_ws/src/sharework_tests/sharework_skills/config/pose_constraints_test.yaml
+    tasks_yaml_path: /home/nyquist/projects/cells_ws/src/sharework_tests/sharework_skills/config/pose_constraints_test.yaml
     group_name: ur_robot
     joint_names:
     - ur10e_shoulder_pan_joint
