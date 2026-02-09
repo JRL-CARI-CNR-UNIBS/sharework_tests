@@ -448,10 +448,6 @@ class PoseConstraintsPipelineNode(Node):
                 continue
 
 
-            if t.get("type", "") ==  "grasp_detection/GetGrasps":
-                self.get_logger().info("Chiamata al servizio di rilevamento grasp (simulazione).")
-                continue
-
             if t.get("type", "") == "grasp_detection/GetGrasps":
                 try:
                     self.get_logger().info("Chiamata al servizio di rilevamento grasp.")
