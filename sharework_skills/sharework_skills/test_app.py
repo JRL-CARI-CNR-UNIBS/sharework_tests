@@ -17,6 +17,10 @@ from time_parametrization_msgs.action import ApplyTimeParametrization
 from moveit_msgs.action import ExecuteTrajectory
 from control_msgs.action import GripperCommand
 
+from grasp_detection_msgs.srv import GetGrasps
+from geometry_msgs.msg import PoseStamped, PoseArray, Pose
+
+
 # Messages
 from pose_constraints_msgs.msg import GeometricConstraintArray, GeometricConstraint
 from moveit_msgs.msg import (
@@ -143,6 +147,9 @@ class PoseConstraintsPipelineNode(Node):
         self.tp_client = ActionClient(self, ApplyTimeParametrization, self.time_param_action_name)
         self.exec_client = ActionClient(self, ExecuteTrajectory, self.execute_action_name)
         self.gripper_client = ActionClient(self, GripperCommand, "/robotiq_action_controller/gripper_cmd")
+
+        # Dentro __init__:
+        self.grasp_client = self.create_client(GetGrasps, '/get_grasps')
 
     def _on_joint_state(self, msg: JointState) -> None:
         self._latest_js = msg
@@ -371,6 +378,38 @@ class PoseConstraintsPipelineNode(Node):
         )
         return result.reached_goal, result.stalled
 
+    def _call_get_grasps_service(self) -> PoseStamped:
+        # Attendi che il servizio sia disponibile
+        if not self.grasp_client.wait_for_service(timeout_sec=self.wait_for_server_sec):
+            raise RuntimeError(f"Servizio '/get_grasps' non disponibile entro {self.wait_for_server_sec}s.")
+
+        # Crea la richiesta
+        request = GetGrasps.Request()
+
+        # Chiama il servizio
+        future = self.grasp_client.call_async(request)
+        rclpy.spin_until_future_complete(self, future)
+
+        # Ottieni la risposta
+        response = future.result()
+
+        if not response:
+            raise RuntimeError("Errore nella chiamata al servizio '/get_grasps'.")
+
+        # Verifica se ci sono grasp
+        if not response.poses.poses:
+            raise RuntimeError("Nessun grasp rilevato.")
+
+        # Prendi il primo grasp
+        first_grasp_pose = response.poses.poses[0]
+
+        # Crea un oggetto PoseStamped
+        grasp_pose = PoseStamped()
+        grasp_pose.header = response.poses.header
+        grasp_pose.pose = first_grasp_pose
+
+        return grasp_pose
+
     def run(self) -> None:
         self.get_logger().info(f"Attendo JointState su: {self.joint_states_topic}")
         self._wait_for_joint_state()
@@ -410,6 +449,17 @@ class PoseConstraintsPipelineNode(Node):
                 self.get_logger().info("Chiamata al servizio di rilevamento grasp (simulazione).")
                 continue
 
+            if t.get("type", "") == "grasp_detection/GetGrasps":
+                try:
+                    self.get_logger().info("Chiamata al servizio di rilevamento grasp.")
+                    grasp_pose = self._call_get_grasps_service()
+                    self.get_logger().info("Grasp rilevato e salvato.")
+                    # Qui puoi usare grasp_pose per le operazioni successive
+                except Exception as e:
+                    self.get_logger().error(f"Errore nel rilevamento grasp: {e}")
+                    if self.stop_on_error:
+                        raise
+                continue
 
             try:
                 goal_conf = t["goal_configuration"]
