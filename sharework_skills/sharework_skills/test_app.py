@@ -353,6 +353,18 @@ class PoseConstraintsPipelineNode(Node):
             name = str(t.get("name", f"task_{idx}"))
             self.get_logger().info(f"[{idx}/{len(tasks)}] Task: {name}")
 
+            if t.get("type", "") == "gripper_control/OpenGripper":
+                self.get_logger().info("Apro il gripper (simulazione).")
+                continue
+
+            if t.get("type", "") == "gripper_control/CloseGripper":
+                self.get_logger().info("Chiudo il gripper (simulazione).")
+                continue
+
+            if t.get("type", "") ==  "grasp_detection/GetGrasps":
+                self.get_logger().info("Chiamata al servizio di rilevamento grasp (simulazione).")
+                continue
+
             try:
                 goal_conf = t["goal_configuration"]
                 if not isinstance(goal_conf, list):
