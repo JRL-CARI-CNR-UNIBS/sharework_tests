@@ -15,6 +15,7 @@ from sensor_msgs.msg import JointState
 from pose_constraints_msgs.action import PlanWithConstraints
 from time_parametrization_msgs.action import ApplyTimeParametrization
 from moveit_msgs.action import ExecuteTrajectory
+from control_msgs.action import GripperCommand
 
 # Messages
 from pose_constraints_msgs.msg import GeometricConstraintArray, GeometricConstraint
@@ -141,6 +142,7 @@ class PoseConstraintsPipelineNode(Node):
         self.plan_client = ActionClient(self, PlanWithConstraints, self.plan_action_name)
         self.tp_client = ActionClient(self, ApplyTimeParametrization, self.time_param_action_name)
         self.exec_client = ActionClient(self, ExecuteTrajectory, self.execute_action_name)
+        self.gripper_client = ActionClient(self, GripperCommand, "/robotiq_action_controller/gripper_cmd")
 
     def _on_joint_state(self, msg: JointState) -> None:
         self._latest_js = msg
@@ -224,6 +226,7 @@ class PoseConstraintsPipelineNode(Node):
             (self.plan_client, self.plan_action_name),
             (self.tp_client, self.time_param_action_name),
             (self.exec_client, self.execute_action_name),
+            (self.gripper_client, "/robotiq_action_controller/gripper_cmd"),
         ]:
             self.get_logger().info(f"Attendo action server: {name}")
             if not client.wait_for_server(timeout_sec=self.wait_for_server_sec):
@@ -339,6 +342,35 @@ class PoseConstraintsPipelineNode(Node):
         rclpy.spin_until_future_complete(self, result_future)
         return result_future.result().result
 
+    def _send_gripper_goal(self, position: float, max_effort: float) -> (bool, bool):
+        goal_msg = GripperCommand.Goal()
+        goal_msg.command.position = float(position)
+        goal_msg.command.max_effort = float(max_effort)
+
+        self.get_logger().info(f"Invio comando gripper: position={position}, max_effort={max_effort}")
+
+        goal_future = self.gripper_client.send_goal_async(goal_msg)
+        rclpy.spin_until_future_complete(self, goal_future)
+        goal_handle = goal_future.result()
+
+        if not goal_handle.accepted:
+            self.get_logger().error("Goal gripper rifiutato.")
+            return False, False
+
+        result_future = goal_handle.get_result_async()
+        rclpy.spin_until_future_complete(self, result_future)
+        result = result_future.result().result
+
+        if not result:
+            self.get_logger().error("Risultato gripper non disponibile.")
+            return False, False
+
+        self.get_logger().info(
+            f"Comando gripper completato: position={result.position}, "
+            f"reached={result.reached_goal}, stalled={result.stalled}"
+        )
+        return result.reached_goal, result.stalled
+
     def run(self) -> None:
         self.get_logger().info(f"Attendo JointState su: {self.joint_states_topic}")
         self._wait_for_joint_state()
@@ -353,17 +385,30 @@ class PoseConstraintsPipelineNode(Node):
             name = str(t.get("name", f"task_{idx}"))
             self.get_logger().info(f"[{idx}/{len(tasks)}] Task: {name}")
 
-            if t.get("type", "") == "gripper_control/OpenGripper":
-                self.get_logger().info("Apro il gripper (simulazione).")
+            if t.get("type", "") == "gripper_control/Gripper":
+                position = float(t.get("position", 0.5))
+                max_effort = float(t.get("max_effort", 0.5))
+                required_stall = bool(t.get("required_stall", False))
+
+                success, stalled = self._send_gripper_goal(position, max_effort)
+
+                if not success:
+                    self.get_logger().error(f"Comando gripper fallito per il task: {name}")
+                    if self.stop_on_error:
+                        raise RuntimeError(f"Comando gripper fallito per il task: {name}")
+
+                if required_stall and not stalled:
+                    self.get_logger().error(f"Stallo richiesto ma non rilevato per il task: {name}")
+                    if self.stop_on_error:
+                        raise RuntimeError(f"Stallo richiesto ma non rilevato per il task: {name}")
+
                 continue
 
-            if t.get("type", "") == "gripper_control/CloseGripper":
-                self.get_logger().info("Chiudo il gripper (simulazione).")
-                continue
 
             if t.get("type", "") ==  "grasp_detection/GetGrasps":
                 self.get_logger().info("Chiamata al servizio di rilevamento grasp (simulazione).")
                 continue
+
 
             try:
                 goal_conf = t["goal_configuration"]
