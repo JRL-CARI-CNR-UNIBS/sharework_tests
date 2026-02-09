@@ -392,15 +392,16 @@ class PoseConstraintsPipelineNode(Node):
 
                 success, stalled = self._send_gripper_goal(position, max_effort)
 
-                if not success:
-                    self.get_logger().error(f"Comando gripper fallito per il task: {name}")
-                    if self.stop_on_error:
-                        raise RuntimeError(f"Comando gripper fallito per il task: {name}")
 
                 if required_stall and not stalled:
                     self.get_logger().error(f"Stallo richiesto ma non rilevato per il task: {name}")
                     if self.stop_on_error:
                         raise RuntimeError(f"Stallo richiesto ma non rilevato per il task: {name}")
+                elif not success:
+                    self.get_logger().error(f"Comando gripper fallito per il task: {name}")
+                    if self.stop_on_error:
+                        raise RuntimeError(f"Comando gripper fallito per il task: {name}")
+
 
                 continue
 
