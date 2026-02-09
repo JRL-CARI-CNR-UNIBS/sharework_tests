@@ -150,6 +150,7 @@ class PoseConstraintsPipelineNode(Node):
 
         # Dentro __init__:
         self.grasp_client = self.create_client(GetGrasps, '/get_grasps')
+        self.publisher = self.create_publisher(PoseArray, '/grasp_poses', 10)
 
     def _on_joint_state(self, msg: JointState) -> None:
         self._latest_js = msg
@@ -400,6 +401,8 @@ class PoseConstraintsPipelineNode(Node):
         if not response.poses.poses:
             raise RuntimeError("Nessun grasp rilevato.")
 
+        # Publish the PoseArray
+        self.publisher.publish(response.poses)
         # Prendi il primo grasp
         first_grasp_pose = response.poses.poses[0]
 
