@@ -397,7 +397,7 @@ class PoseConstraintsPipelineNode(Node):
                     self.get_logger().error(f"Stallo richiesto ma non rilevato per il task: {name}")
                     if self.stop_on_error:
                         raise RuntimeError(f"Stallo richiesto ma non rilevato per il task: {name}")
-                elif required_stall and not success:
+                elif not required_stall and not success:
                     self.get_logger().error(f"Comando gripper fallito per il task: {name}")
                     if self.stop_on_error:
                         raise RuntimeError(f"Comando gripper fallito per il task: {name}")
