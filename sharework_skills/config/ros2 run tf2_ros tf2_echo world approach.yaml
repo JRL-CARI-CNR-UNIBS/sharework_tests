@@ -1,0 +1,19 @@
+ros2 run tf2_ros tf2_echo world approach_frame
+[INFO 1770649605.438849714] [tf2_echo main()] [170]: Waiting for transform world ->  approach_frame: Invalid frame ID "world" passed to canTransform argument target_frame - frame does not exist
+[INFO 1770649607.423456955] [tf2_echo main()] [170]: Waiting for transform world ->  approach_frame: Invalid frame ID "approach_frame" passed to canTransform argument source_frame - frame does not exist
+At time 1770649608.116760845
+- Translation: [0.218, 0.519, 1.238]
+- Rotation: in Quaternion (xyzw) [0.997, 0.048, 0.061, -0.010]
+- Rotation: in RPY (radian) [-3.127, -0.123, 0.095]
+- Rotation: in RPY (degree) [-179.167, -7.063, 5.459]
+- Matrix:
+  0.988  0.097  0.121  0.218
+  0.094 -0.995  0.026  0.519
+  0.123 -0.014 -0.992  1.238
+  0.000  0.000  0.000  1.000
+
+
+ Pose in world frame:             -9.89112e-05     0.998161   -0.0606253     0.228146
+[pose_constraints_planner_node-4]      0.99589   0.00558946    0.0904024      0.51469
+[pose_constraints_planner_node-4]     0.090575   -0.0603671    -0.994058      1.23826
+[pose_constraints_planner_node-4]            0            0            0            1

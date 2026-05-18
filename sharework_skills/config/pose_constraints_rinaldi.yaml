@@ -1,97 +1,158 @@
 tasks:
-#  - name: "goto_camera_vertical_pose"
-#    type: "movement"
-#    goal_configuration: [1.570796327, -2.443460953, 2.443460953, -1.570796327, 1.570796327, 0.0]
-#
-#    # geometric constraints definition
-#    geometric_constraints:
-#      # Define a plane constraint at y=0.5 with normal along y-axis
-#      -   name: "geometric_constraint_1"
-#          type: "plane"
-#          frame: "world"
-#          origin: [ 0.5,0.0,0.0 ]       # point on the plane
-#          normal: [ -1,0,0 ]             # normal vector of the plane
-#      # Define an orientation constraint around z-axis with max angle 0.3 radians
-#      -   name: "geometric_constraint_2"
-#          type: "orientation"
-#          frame: "world"
-#          max_angle: [-1.0,-1.0,0.3]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
-#      # Define a plane constraint at z=1.1 with normal along z-axis
-#      -   name: "geometric_constraint_3"
-#          type: "plane"
-#          frame: "world"
-#          origin: [ 0.0,0.0,1.1 ]       # point on the plane
-#          normal: [ 0,0,1 ]             # normal vector of the plane
-#
-#  - name: "get_grasp"
-#    type: "grasp_detection/GetGrasps"
+
+  - name: "goto_camera"
+    type: "movement"
+    goal_configuration: [0.684930682182312, -1.4320574712804337, 2.2002719084369105, -2.3626486263670863, 1.5996402502059937, 0.8868281841278076]
+    # geometric constraints definition
+    geometric_constraints:
+      # Define an orientation constraint around z-axis with max angle 0.3 radians
+      -   name: "geometric_constraint_2"
+          type: "orientation"
+          frame: "open_tip"
+          max_angle: [-1.0,-1.0,1.0]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
+      # Define a plane constraint at z=1.1 with normal along z-axis
+      -   name: "geometric_constraint_3"
+          type: "plane"
+          frame: "world"
+          origin: [ 0.0,0.0,1.0 ]       # point on the plane
+          normal: [ 0,0,1 ]             # normal vector of the plane
 
   - name: "open_gripper"
     type: "gripper_control/Gripper"
-    position: 0.0
-    max_effort: 0.5
-    required_stall: false
+    position: 0.0 # 0.0 tutto aperto
+    max_effort: 0.9  # forza di chiusura al 50% 
+    required_stall: false # stall = true --> afferrato oggetto. 
+
+  - name: "get_grasp"
+    type: "grasp_detection/GetGrasps"
+
+  
+  - name: "move_to_approach"
+    type: "movement"
+    cartesian_goal:
+      position: [0.0, 0.0, 0.0]
+      orientation: [0.0, 0.0, 0.0, 1.0]
+      frame_id: "approach_frame"
+    # geometric constraints definition
+    geometric_constraints:
+      # Define an orientation constraint around z-axis with max angle 0.3 radians
+      -   name: "geometric_constraint_2"
+          type: "orientation"
+          frame: "open_tip"
+          max_angle: [-1.0,-1.0,0.6]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
+      # Define a plane constraint at z=1.1 with normal along z-axis
+      -   name: "geometric_constraint_3"
+          type: "plane"
+          frame: "world"
+          origin: [ 0.0,0.0,1.0 ]       # point on the plane
+          normal: [ 0,0,1 ]             # normal vector of the plane
+  
+  - name: "move_to_object"
+    type: "movement"
+    cartesian_goal:
+      position: [0.0, 0.0, 0.01]
+      orientation: [0.0, 0.0, 0.0, 1.0]
+      frame_id: "grasp_frame"
+    # geometric constraints definition
+    geometric_constraints:
+      # Define an orientation constraint around z-axis with max angle 0.3 radians
+      -   name: "geometric_constraint_2"
+          type: "orientation"
+          frame: "open_tip"
+          max_angle: [-1.0,-1.0,1.0]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
+      # Define a plane constraint at z=1.1 with normal along z-axis
+      -   name: "geometric_constraint_3"
+          type: "plane"
+          frame: "world"
+          origin: [ 0.0,0.0,1.0 ]       # point on the plane
+          normal: [ 0,0,1 ]             # normal vector of the plane
+   # vai al punto di presa con vincoli geometrici...
 
   - name: "close_gripper"
     type: "gripper_control/Gripper"
-    position: 0.8
-    max_effort: 0.5
-    required_stall: true
-#  - name: "move_to_object"
-#    type: "movement"
-#    # vai al punto di presa con vincoli geometrici...
+    position: 0.8  #0.8 radianti, gripper chiuso
+    max_effort: 0.9
+    required_stall: true # richiedo che vada in stallo perchè ha trovato un oggetto
+  
 #
 #  - name: "close_gripper"
 #    type: "gripper_control/CloseGripper"
-#
-#  - name: "return_to_camera_vertical_pose"
-#    type: "movement"
-#    goal_configuration: [1.570796327, -2.443460953, 2.443460953, -1.570796327, 1.570796327, 0.0]
-#
-#    # geometric constraints definition
-#    geometric_constraints:
-#      # Define a plane constraint at y=0.5 with normal along y-axis
-#      -   name: "geometric_constraint_1"
-#          type: "plane"
-#          frame: "world"
-#          origin: [ 0.5,0.0,0.0 ]       # point on the plane
-#          normal: [ -1,0,0 ]             # normal vector of the plane
-#      # Define an orientation constraint around z-axis with max angle 0.3 radians
-#      -   name: "geometric_constraint_2"
-#          type: "orientation"
-#          frame: "world"
-#          max_angle: [-1.0,-1.0,0.3]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
-#      # Define a plane constraint at z=1.1 with normal along z-axis
-#      -   name: "geometric_constraint_3"
-#          type: "plane"
-#          frame: "world"
-#          origin: [ 0.0,0.0,1.1 ]       # point on the plane
-#          normal: [ 0,0,1 ]             # normal vector of the plane
-#
-#  - name: "goto_final_destination"
-#    type: "movement"
-#    goal_configuration: [0.87266, -1.27409, 2.25147, -2.54818, 1.57080, 0.69813]
-#
-#    # geometric constraints definition
-#    geometric_constraints:
-#      # Define a plane constraint at y=0.5 with normal along y-axis
-#      -   name: "geometric_constraint_1"
-#          type: "plane"
-#          frame: "world"
-#          origin: [ 0.5,0.0,0.0 ]       # point on the plane
-#          normal: [ -1,0,0 ]             # normal vector of the plane
-#      # Define an orientation constraint around z-axis with max angle 0.3 radians
-#      -   name: "geometric_constraint_2"
-#          type: "orientation"
-#          frame: "world"
-#          max_angle: [-1.0,-1.0,0.3]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
-#      # Define a plane constraint at z=1.1 with normal along z-axis
-#      -   name: "geometric_constraint_3"
-#          type: "plane"
-#          frame: "world"
-#          origin: [ 0.0,0.0,1.1 ]       # point on the plane
-#          normal: [ 0,0,1 ]             # normal vector of the plane
-#
-#    - name: "open_gripper"
-#      type: "gripper_control/OpenGripper"
-#
+
+
+  - name: "return"
+    type: "movement"
+    goal_configuration: [0.622, -1.640, 2.29, -2.221, 1.610, 0.861]
+    # geometric constraints definition
+    geometric_constraints:
+      # Define an orientation constraint around z-axis with max angle 0.3 radians
+      -   name: "geometric_constraint_2"
+          type: "orientation"
+          frame: "open_tip"
+          max_angle: [-1.0,-1.0,1.0]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
+      # Define a plane constraint at z=1.1 with normal along z-axis
+      -   name: "geometric_constraint_3"
+          type: "plane"
+          frame: "world"
+          origin: [ 0.0,0.0,1.0 ]       # point on the plane
+          normal: [ 0,0,1 ]             # normal vector of the plane
+
+
+  - name: "place"
+    type: "movement"
+    goal_configuration: [-0.08926135698427373, -1.9652215443053187, 2.5351551214801233, -2.114977022210592, 1.6004087924957275, 1.5725696086883545]
+    # geometric constraints definition
+    geometric_constraints:
+      # Define an orientation constraint around z-axis with max angle 0.3 radians
+      -   name: "geometric_constraint_2"
+          type: "orientation"
+          frame: "open_tip"
+          max_angle: [-1.0,-1.0,1.0]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
+      # Define a plane constraint at z=1.1 with normal along z-axis
+      -   name: "geometric_constraint_3"
+          type: "plane"
+          frame: "world"
+          origin: [ 0.0,0.0,1.0 ]       # point on the plane
+          normal: [ 0,0,1 ]             # normal vector of the plane
+
+
+
+
+  - name: "drop"
+    type: "movement"
+    goal_configuration: [-0.19093543687929326, -2.0105091534056605, 2.292227570210592, -1.823777814904684, 1.5977238416671753, 1.6738414764404297]
+    # geometric constraints definition
+    geometric_constraints:
+      # Define an orientation constraint around z-axis with max angle 0.3 radians
+      -   name: "geometric_constraint_2"
+          type: "orientation"
+          frame: "open_tip"
+          max_angle: [-1.0,-1.0,1.0]  # [x,y,z] max angle in radians around each axis, -1.0 means no constraints
+      # Define a plane constraint at z=1.1 with normal along z-axis
+      -   name: "geometric_constraint_3"
+          type: "plane"
+          frame: "world"
+          origin: [ 0.0,0.0,1.0 ]       # point on the plane
+          normal: [ 0,0,1 ]             # normal vector of the plane
+
+  - name: "open_gripper2"
+    type: "gripper_control/Gripper"
+    position: 0.0 # 0.0 tutto aperto
+    max_effort: 0.5  # forza di chiusura al 50% 
+    required_stall: false # stall = true --> afferrato oggetto. 
+
+
+# place
+# name:
+# - ur10e_shoulder_pan_joint
+# - ur10e_shoulder_lift_joint
+# - ur10e_elbow_joint
+# - ur10e_wrist_1_joint
+# - ur10e_wrist_2_joint
+# - ur10e_wrist_3_joint
+# position:
+# - -0.19093543687929326
+# - -2.0105091534056605
+# - 2.292227570210592
+# - -1.823777814904684
+# - 1.5977238416671753
+# - 1.6738414764404297

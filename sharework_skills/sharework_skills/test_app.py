@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -7,6 +8,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
+from tf2_ros import TransformBroadcaster, TransformListener
 import yaml
 
 from sensor_msgs.msg import JointState
@@ -18,7 +20,12 @@ from moveit_msgs.action import ExecuteTrajectory
 from control_msgs.action import GripperCommand
 
 from grasp_detection_msgs.srv import GetGrasps
-from geometry_msgs.msg import PoseStamped, PoseArray, Pose
+from tf2_ros import TransformException
+from tf2_ros.buffer import Buffer
+
+from geometry_msgs.msg import PoseStamped, PoseArray, Pose, TransformStamped
+from tf2_geometry_msgs import do_transform_pose  # sometimes: from tf2_geometry_msgs.tf2_geometry_msgs import do_transform_pose
+
 
 
 # Messages
@@ -30,6 +37,9 @@ from moveit_msgs.msg import (
     JointConstraint,
     MoveItErrorCodes,
     RobotState,
+    PositionConstraint,
+    OrientationConstraint,
+    BoundingVolume,
 )
 
 
@@ -151,6 +161,14 @@ class PoseConstraintsPipelineNode(Node):
         # Dentro __init__:
         self.grasp_client = self.create_client(GetGrasps, '/get_grasps')
         self.publisher = self.create_publisher(PoseArray, '/grasp_poses', 10)
+        self.tf_broadcaster = TransformBroadcaster(self)
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+        # set a timer to publish tf every 0.5 s
+        self.grasp_pose = None
+        self.grasp_pose_in_world = None
+        self.tf_timer = self.create_timer(0.5, self.sendTransform)
+        
 
     def _on_joint_state(self, msg: JointState) -> None:
         self._latest_js = msg
@@ -338,6 +356,68 @@ class PoseConstraintsPipelineNode(Node):
 
         return req
 
+    def _build_motion_plan_request_from_cartesian_goal(self, cartesian_goal: Dict[str, Any], start_state: RobotState) -> MotionPlanRequest:
+        """
+        Costruisce MotionPlanRequest da un goal Cartesiano.
+        cartesian_goal deve contenere 'position' e opzionalmente 'orientation' e 'link_name'.
+        """
+        req = MotionPlanRequest()
+        req.group_name = self.group_name
+        req.num_planning_attempts = self.num_planning_attempts
+        req.allowed_planning_time = self.allowed_planning_time
+
+        req.max_velocity_scaling_factor = self.max_vel
+        req.max_acceleration_scaling_factor = self.max_acc
+
+        req.start_state = start_state
+
+        c = Constraints()
+        c.name = "cartesian_goal"
+
+        # Construct a pose constraint from the cartesian goal
+        from geometry_msgs.msg import PointStamped, QuaternionStamped
+        
+        pose = Pose()
+        pos = cartesian_goal.get("position", [0, 0, 0])
+        pose.position.x = float(pos[0]) if len(pos) > 0 else 0.0
+        pose.position.y = float(pos[1]) if len(pos) > 1 else 0.0
+        pose.position.z = float(pos[2]) if len(pos) > 2 else 0.0
+
+        orient = cartesian_goal.get("orientation", [0, 0, 0, 1])
+        pose.orientation.x = float(orient[0]) if len(orient) > 0 else 0.0
+        pose.orientation.y = float(orient[1]) if len(orient) > 1 else 0.0
+        pose.orientation.z = float(orient[2]) if len(orient) > 2 else 0.0
+        pose.orientation.w = float(orient[3]) if len(orient) > 3 else 1.0
+
+        pos_constraints = PositionConstraint()
+        ori_constraints = OrientationConstraint()
+
+        pos_constraints.link_name=cartesian_goal.get("link_name", "")
+        pos_constraints.target_point_offset.x = pose.position.x
+        pos_constraints.target_point_offset.y = pose.position.y
+        pos_constraints.target_point_offset.z = pose.position.z
+        pos_constraints.constraint_region = BoundingVolume()
+        pos_constraints.weight = 1.0
+        pos_constraints.header.frame_id = cartesian_goal.get("frame_id", "")
+
+        ori_constraints.link_name = cartesian_goal.get("link_name", "")
+        ori_constraints.orientation.x = pose.orientation.x
+        ori_constraints.orientation.y = pose.orientation.y
+        ori_constraints.orientation.z = pose.orientation.z
+        ori_constraints.orientation.w = pose.orientation.w
+        ori_constraints.absolute_x_axis_tolerance = 0.1
+        ori_constraints.absolute_y_axis_tolerance = 0.1
+        ori_constraints.absolute_z_axis_tolerance = 0.1
+        ori_constraints.weight = 1.0
+        ori_constraints.header.frame_id = cartesian_goal.get("frame_id", "")
+
+        c.position_constraints.append(pos_constraints)
+        c.orientation_constraints.append(ori_constraints)
+
+        req.goal_constraints.append(c)
+
+        return req
+
     def _send_goal_and_wait(self, client: ActionClient, goal_msg: Any, label: str) -> Any:
         goal_future = client.send_goal_async(goal_msg)
         rclpy.spin_until_future_complete(self, goal_future)
@@ -405,13 +485,73 @@ class PoseConstraintsPipelineNode(Node):
         self.publisher.publish(response.poses)
         # Prendi il primo grasp
         first_grasp_pose = response.poses.poses[0]
-
         # Crea un oggetto PoseStamped
         grasp_pose = PoseStamped()
         grasp_pose.header = response.poses.header
         grasp_pose.pose = first_grasp_pose
 
-        return grasp_pose
+        # get camera frame in world 
+        self.get_logger().info(f"Trasformazione da {response.poses.header.frame_id} a world")
+        try:
+            t = self.tf_buffer.lookup_transform(
+                "world",
+                response.poses.header.frame_id,
+                rclpy.time.Time())
+        except TransformException as ex:
+            self.get_logger().info(
+                f'Could not transform {response.poses.header.frame_id} to world: {ex}')
+            return None
+        self.get_logger().info(f"Trasformazione trovata: {t}")
+        # convert grasp pose in world frame
+        grasp_pose_in_world = PoseStamped()
+        grasp_pose_in_world.pose = do_transform_pose(grasp_pose.pose, t)
+        grasp_pose_in_world.header.frame_id = "world"
+        self.grasp_pose_in_world = grasp_pose_in_world
+        self.grasp_pose = grasp_pose
+
+        self.sendTransform()
+ 
+        return grasp_pose_in_world
+    # send transform callback
+    def sendTransform(self)  -> None:
+                # publish TF of grasp_pose
+        if (self.grasp_pose):
+            
+            
+
+
+            grasp_tf = TransformStamped()
+            grasp_tf.header = self.grasp_pose.header
+            grasp_tf.header.stamp = self.get_clock().now().to_msg()
+            grasp_tf.child_frame_id = "grasp_frame2"
+            grasp_tf.transform.translation.x = self.grasp_pose.pose.position.x
+            grasp_tf.transform.translation.y = self.grasp_pose.pose.position.y
+            grasp_tf.transform.translation.z = self.grasp_pose.pose.position.z
+            grasp_tf.transform.rotation      = self.grasp_pose.pose.orientation
+            self.tf_broadcaster.sendTransform(grasp_tf)
+
+
+
+            grasp_tf = TransformStamped()
+            grasp_tf.header = self.grasp_pose_in_world.header
+            grasp_tf.header.stamp = self.get_clock().now().to_msg()
+            grasp_tf.child_frame_id = "grasp_frame"
+            grasp_tf.transform.translation.x = self.grasp_pose_in_world.pose.position.x
+            grasp_tf.transform.translation.y = self.grasp_pose_in_world.pose.position.y
+            grasp_tf.transform.translation.z = self.grasp_pose_in_world.pose.position.z
+            grasp_tf.transform.rotation      = self.grasp_pose_in_world.pose.orientation
+            self.tf_broadcaster.sendTransform(grasp_tf)
+
+            # publish an approach pose 0.15 meter above (z world)
+            approach_tf = TransformStamped()
+            approach_tf.header = self.grasp_pose_in_world.header
+            approach_tf.header.stamp = self.get_clock().now().to_msg()
+            approach_tf.child_frame_id = "approach_frame"
+            approach_tf.transform.translation.x = self.grasp_pose_in_world.pose.position.x
+            approach_tf.transform.translation.y = self.grasp_pose_in_world.pose.position.y
+            approach_tf.transform.translation.z = self.grasp_pose_in_world.pose.position.z + 0.15
+            approach_tf.transform.rotation = self.grasp_pose_in_world.pose.orientation
+            self.tf_broadcaster.sendTransform(approach_tf)
 
     def run(self) -> None:
         self.get_logger().info(f"Attendo JointState su: {self.joint_states_topic}")
@@ -461,19 +601,29 @@ class PoseConstraintsPipelineNode(Node):
                 continue
 
             try:
-                goal_conf = t["goal_configuration"]
-                if not isinstance(goal_conf, list):
-                    raise RuntimeError("goal_configuration deve essere una lista di float.")
+                # start_state “fresh” per ogni task
+                start_state = self._build_start_state_from_joint_states()
+
+                if "goal_configuration" in t:
+                    goal_conf = t["goal_configuration"]
+                    if not isinstance(goal_conf, list):
+                        raise RuntimeError("goal_configuration deve essere una lista di float.")
+                                    # ---- Build request + constraints
+                    mpr = self._build_motion_plan_request(goal_conf, start_state)
+
+                elif "cartesian_goal" in t:
+                    cartesian_goal = t["cartesian_goal"]
+                    if not isinstance(cartesian_goal, dict):
+                        raise RuntimeError("cartesian_goal deve essere un dizionario.")
+                    mpr = self._build_motion_plan_request_from_cartesian_goal(cartesian_goal, start_state)
+                else:
+                    raise RuntimeError("Nessun goal valido trovato nel task.")
 
                 geom = t.get("geometric_constraints", []) or []
                 if not isinstance(geom, list):
                     raise RuntimeError("geometric_constraints deve essere una lista.")
 
-                # start_state “fresh” per ogni task
-                start_state = self._build_start_state_from_joint_states()
 
-                # ---- Build request + constraints
-                mpr = self._build_motion_plan_request(goal_conf, start_state)
                 gca = self._build_geometric_constraints_array(geom)
 
                 # ---- 1) Plan with constraints
@@ -513,10 +663,10 @@ class PoseConstraintsPipelineNode(Node):
                 exec_res = self._send_goal_and_wait(self.exec_client, exec_goal, self.execute_action_name)
 
                 try:
-                    if not _is_success(exec_res.error_code):
-                        raise RuntimeError(f"Esecuzione fallita (error_code={int(exec_res.error_code.val)})")
+                   if not _is_success(exec_res.error_code):
+                       raise RuntimeError(f"Esecuzione fallita (error_code={int(exec_res.error_code.val)})")
                 except Exception:
-                    pass
+                   pass
 
                 self.get_logger().info(f"Task '{name}' completato.")
 
@@ -534,12 +684,16 @@ def main(argv=None) -> None:
     try:
         node = PoseConstraintsPipelineNode()
         node.run()
+        
+        while rclpy.ok():
+            rclpy.spin_once(node)
+            # sleep 0.1 seconds
+            time.sleep(0.1)
     finally:
         if node is not None:
             node.destroy_node()
         rclpy.shutdown()
-
-
+    
 if __name__ == "__main__":
     main(sys.argv)
 

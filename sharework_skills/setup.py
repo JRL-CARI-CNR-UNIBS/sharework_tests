@@ -36,7 +36,8 @@ setup(
             'test_skills = sharework_skills.test_skills:main'
         ],
         'console_scripts': [
-            'test_app = sharework_skills.test_app:main'
+            'test_app = sharework_skills.test_app:main',
+            'test_app_loop = sharework_skills.test_app_loop:main'
         ],
     },
 )

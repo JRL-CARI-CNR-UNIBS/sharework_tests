@@ -13,11 +13,11 @@ pose_constraints_pipeline:
     max_joint_state_age_sec: 1.0
     joint_states_topic: /joint_states
 
-    allowed_planning_time: 60.0
+    allowed_planning_time: 10.0
     num_planning_attempts: 3
     joint_tolerance: 0.001
     max_velocity_scaling_factor: 0.1
-    max_acceleration_scaling_factor: 0.1
+    max_acceleration_scaling_factor: 0.2
 
     plan_action_name: /plan_with_constraints
     time_param_action_name: /apply_time_parametrization
@@ -27,3 +27,11 @@ pose_constraints_pipeline:
     stop_on_error: true
     dry_run: false
 
+    # ---- FULL CLOSE CHECK ----
+    gripper_joint_name: "ur10e_robotiq_85_left_knuckle_joint"
+    full_close_position: 0.8
+    full_close_tol: 0.05
+
+    min_grasp_score: 0.0
+    empty_grasp_retries: 15
+    empty_grasp_retry_delay_sec: 0.5

@@ -25,7 +25,8 @@ def _make_node(context, *args, **kwargs):
     return [
         Node(
             package="sharework_skills",
-            executable="test_app",
+            executable="test_app_loop",
+            name="pose_constraints_pipeline",
             output="screen",
             parameters=[
                 {"tasks_yaml_path": tasks_yaml_path},
