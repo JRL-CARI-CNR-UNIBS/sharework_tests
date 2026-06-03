@@ -4,7 +4,7 @@ ROS 2 package for testing a constrained motion pipeline with grasp detection and
 
 ## Package overview
 
-- **Main package path**: `/tmp/workspace/JRL-CARI-CNR-UNIBS/sharework_tests/sharework_skills`
+- **Main package path**: `sharework_skills/`
 - **Main runtime nodes**:
   - `sharework_skills/test_app.py`: single-pass constrained task pipeline
   - `sharework_skills/test_app_loop.py`: robust pick&place loop with grasp recomputation and recovery
@@ -152,7 +152,7 @@ tasks:
   - `time_parametrization_msgs/action/ApplyTimeParametrization`
   - `moveit_msgs/action/ExecuteTrajectory`
   - `control_msgs/action/GripperCommand`
-- **Service**:
+- **Services**:
   - `grasp_detection_msgs/srv/GetGrasps`
 - **Topics**:
   - `/joint_states`
