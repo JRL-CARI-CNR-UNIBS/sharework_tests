@@ -5,10 +5,17 @@ ROS 2 package for testing a constrained motion pipeline with grasp detection and
 ## Package overview
 
 - **Main package path**: `sharework_skills/`
-- **Main runtime nodes**:
-  - `sharework_skills/test_app.py`: single-pass constrained task pipeline
-  - `sharework_skills/test_app_loop.py`: robust pick&place loop with grasp recomputation and recovery
-  - `sharework_skills/test_grasp.py`: standalone grasp service test/publisher
+- **BT pipeline focus**:
+  - `sharework_skills/bt_pipeline.py`
+  - `from .robot_context import RobotContext`
+  - `from .behaviours.motion import ExecuteMotionTask`
+  - `from .behaviours.gripper import GripperCommand, FullCloseGuard`
+  - `from .behaviours.perception import GetGrasps`
+  - `from .behaviours.bag_recorder import StartBag, StopBag`
+- **Current executable nodes in this repository snapshot**:
+  - `sharework_skills/test_app.py`
+  - `sharework_skills/test_app_loop.py`
+  - `sharework_skills/test_grasp.py`
 - **Launch files**:
   - `launch/run_application.launch.py`
   - `launch/apply_time_parametrization_server.launch.py`
@@ -20,18 +27,12 @@ ROS 2 package for testing a constrained motion pipeline with grasp detection and
 
 ## Runtime flow (high level)
 
-1. Load ROS parameters and task YAML.
-2. Wait for joint states and required action/service servers.
-3. Build geometric constraints (`plane`, `line`, `orientation`).
-4. For each movement task:
-   - plan (`/plan_with_constraints`)
-   - apply time parametrization (`/apply_time_parametrization`)
-   - execute (`/execute_trajectory`)
-5. For grasping tasks:
-   - call `/get_grasps`
-   - publish TF helpers (`grasp_frame`, `approach_frame`)
-   - command gripper through `/robotiq_action_controller/gripper_cmd`
-6. In loop mode (`test_app_loop.py`), failures in suffix phase trigger recovery and full grasp recomputation.
+1. `bt_pipeline.py` builds the task tree and shares state through `RobotContext`.
+2. `GetGrasps` handles perception and writes the selected grasp into context.
+3. `ExecuteMotionTask` executes constrained motion actions.
+4. `GripperCommand` executes open/close actions.
+5. `FullCloseGuard` validates grasp closure state and triggers recovery transitions.
+6. `StartBag` / `StopBag` wrap rosbag recording for experiment traces.
 
 ## UML package diagram
 
@@ -40,10 +41,15 @@ classDiagram
 direction LR
 
 namespace sharework_skills {
-  class test_app_py
-  class test_app_loop_py
-  class test_grasp_py
-  class test_skills_py
+  class bt_pipeline_py
+  class robot_context_py
+}
+
+namespace behaviours {
+  class motion_py
+  class gripper_py
+  class perception_py
+  class bag_recorder_py
 }
 
 namespace launch {
@@ -58,12 +64,15 @@ namespace config {
   class time_parametrization_server_yaml
 }
 
-run_application_launch_py --> test_app_loop_py : starts node
+run_application_launch_py --> bt_pipeline_py : starts node
 apply_time_parametrization_server_launch_py --> time_parametrization_server_yaml : loads params
-test_app_py --> pose_constraints_test_yaml : loads tasks
-test_app_loop_py --> pose_constraints_rinaldi_yaml : loads tasks
-test_app_py --> pipeline_params_yaml : uses ROS params
-test_app_loop_py --> pipeline_params_yaml : uses ROS params
+bt_pipeline_py --> robot_context_py : shared runtime state
+bt_pipeline_py --> motion_py : ExecuteMotionTask
+bt_pipeline_py --> gripper_py : GripperCommand, FullCloseGuard
+bt_pipeline_py --> perception_py : GetGrasps
+bt_pipeline_py --> bag_recorder_py : StartBag, StopBag
+bt_pipeline_py --> pose_constraints_rinaldi_yaml : loads tasks
+bt_pipeline_py --> pipeline_params_yaml : uses ROS params
 ```
 
 ## UML class diagram (core runtime classes)
@@ -72,38 +81,45 @@ test_app_loop_py --> pipeline_params_yaml : uses ROS params
 classDiagram
 direction TB
 
-class Node
-class PoseConstraintsPipelineNode {
-  +run()
-  -_wait_servers()
-  -_load_tasks()
-  -_execute_task()
-  -_build_motion_plan_request()
-  -_build_geometric_constraints_array()
-  -_call_get_grasps_service_all()
-  -_recovery_open_and_return()
+class BTBuilder {
+  +create_tree()
+}
+class RobotContext {
+  +tasks
+  +latest_joint_state
+  +selected_grasp
+  +blackboard
+}
+class ExecuteMotionTask {
+  +tick()
+}
+class GripperCommand {
+  +tick()
+}
+class FullCloseGuard {
+  +tick()
+}
+class GetGrasps {
+  +tick()
+}
+class StartBag {
+  +tick()
+}
+class StopBag {
+  +tick()
 }
 
-class PoseConstraintsPipelineNodeSingle {
-  +run()
-  -_wait_servers()
-  -_load_tasks()
-  -_build_motion_plan_request()
-  -_build_geometric_constraints_array()
-  -_call_get_grasps_service()
-}
-
-class GraspNode {
-  +get_grasps()
-  +handle_response()
-}
-
-class FullCloseError
-
-Node <|-- PoseConstraintsPipelineNode
-Node <|-- PoseConstraintsPipelineNodeSingle
-Node <|-- GraspNode
-FullCloseError <.. PoseConstraintsPipelineNode : raises on full-close
+BTBuilder --> RobotContext
+BTBuilder --> ExecuteMotionTask
+BTBuilder --> GripperCommand
+BTBuilder --> FullCloseGuard
+BTBuilder --> GetGrasps
+BTBuilder --> StartBag
+BTBuilder --> StopBag
+FullCloseGuard --> RobotContext
+ExecuteMotionTask --> RobotContext
+GripperCommand --> RobotContext
+GetGrasps --> RobotContext
 ```
 
 ## Launching
@@ -160,8 +176,5 @@ tasks:
 
 ## Notes
 
-- `test_app_loop.py` adds:
-  - retry logic on empty/low-quality grasps
-  - FULL CLOSE detection (`full_close_position`, `full_close_tol`)
-  - recovery strategy (`open + return`) after suffix failures
-- Parameters are read under node name `pose_constraints_pipeline` from `pipeline_params.yaml`.
+- This README is now organized around the `bt_pipeline.py` split and its behavior modules.
+- In the current repository snapshot, the concrete runtime logic is still visible in `test_app.py` and `test_app_loop.py`.
